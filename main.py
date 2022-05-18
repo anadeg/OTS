@@ -120,6 +120,32 @@ def add_edge(graph_name: str, source: str, to: str):
     add_data_to_json(path_to_file, graph)
 
 
+def update_graph(name: str, directed: bool, nodes, edges):
+    data = {
+        "name": name,
+        "directed": directed,
+        "nodes": list(nodes),
+        "edges": list(edges)
+    }
+    return data
+
+
+@app.command()
+def delete_node(graph_name: str, node: str):
+    old_graph = read_graph_from_json(graph_name)
+
+    name, is_directed, nodes, edges = list(old_graph.values())
+    nx_g = nx.Graph()
+    nx_g.add_nodes_from(nodes)
+    nx_g.add_edges_from(edges)
+
+    nx_g.remove_node(node)
+
+    new_graph = update_graph(name, is_directed, nx_g.nodes, nx_g.edges)
+    path_to_file = get_path_to_file(graph_name)
+    add_data_to_json(path_to_file, new_graph)
+
+
 def get_html_path(html_name: str):
     path_to_file = os.path.join("", "htmls", html_name)
     return path_to_file
