@@ -1,9 +1,10 @@
 import os
 import json
 
-from typing import List, Optional
+from typing import Optional
 
 import typer
+import networkx as nx
 
 from pyvis.network import Network
 
@@ -49,12 +50,12 @@ def add_data_to_json(path_to_file, data):
 
 
 def create_directed(graph_name: str):
-    g = DirectedGraph(graph_name)
+    # g = DirectedGraph(graph_name)
     upload_data = {
-        "name": g.name,
+        "name": graph_name,
         "directed": True,
-        "nodes": list(g.graph.nodes),
-        "edges": list(g.graph.edges)
+        "nodes": [],
+        "edges": []
     }
     path_to_file, is_created = create_file(graph_name)
     if is_created:
@@ -62,12 +63,12 @@ def create_directed(graph_name: str):
 
 
 def create_undirected(graph_name: str):
-    g = UndirectedGraph(graph_name)
+    # g = UndirectedGraph(graph_name)
     upload_data = {
-        "name": g.name,
+        "name": graph_name,
         "directed": False,
-        "nodes": list(g.graph.nodes),
-        "edges": list(g.graph.edges)
+        "nodes": [],
+        "edges": []
     }
     path_to_file, is_created = create_file(graph_name)
     if is_created:
@@ -127,14 +128,15 @@ def get_html_path(html_name: str):
 @app.command()
 def show(graph_name: str,
          html_name: str,
-         reload: bool = typer.Argument(True,
-                                       help='True (default) for reloading existing page,'
-                                       'False for opening new tab')):
+         stay_this_tab: Optional[bool] = typer.Option(False,
+                                       "-f",
+                                       "--false",
+                                       help='Stay on current tab - default (or open new)')):
     graph_dict = read_graph_from_json(graph_name)
     nt = Network(directed=graph_dict["directed"],
                  bgcolor='#222222',
                  font_color='white',
-                 notebook=reload)
+                 notebook=not stay_this_tab)
     nt.add_nodes(graph_dict["nodes"])
     nt.add_edges(graph_dict["edges"])
     html_file = get_html_path(html_name)
