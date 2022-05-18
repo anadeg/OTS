@@ -1,10 +1,8 @@
-import glob, os
+import os
 import json
 
-from typing import Optional
+from typing import List, Optional
 
-import pyvis
-import networkx as nx
 import typer
 
 from pyvis.network import Network
@@ -26,11 +24,16 @@ def graph_files(path_to_file):
     return result
 
 
-@app.command()
-def create_file(graph_name: str):
+def get_path_to_file(graph_name: str):
     path_to_folder = os.path.dirname(os.path.abspath(__file__))
     new_file = ".".join([graph_name, "json"])
     path_to_file = os.path.join(path_to_folder, "graphs", new_file)
+    return path_to_file
+
+
+@app.command()
+def create_file(graph_name: str):
+    path_to_file = get_path_to_file(graph_name)
     graphs = graph_files(path_to_file)
     if graph_name not in graphs:
         with open(path_to_file, 'w') as file:
@@ -91,6 +94,42 @@ def add_graph(graph_name: str, directed_graph: Optional[bool] =
         create_undirected(graph_name)
     else:
         typer.echo("error")
+
+
+def read_graph_from_json(graph_name: str):
+    path_to_file = get_path_to_file(graph_name)
+    with open(path_to_file) as file:
+        graph_dict = json.load(file)
+    return graph_dict
+
+
+@app.command()
+def add_node(graph_name: str, node: str):
+    graph = read_graph_from_json(graph_name)
+    graph["nodes"].append(node)
+    path_to_file = get_path_to_file(graph_name)
+    add_data_to_json(path_to_file, graph)
+
+
+@app.command()
+def add_edge(graph_name: str, source: str, to: str):
+    graph = read_graph_from_json(graph_name)
+    graph["edges"].append((source, to))
+    path_to_file = get_path_to_file(graph_name)
+    add_data_to_json(path_to_file, graph)
+
+
+@app.command()
+def show(graph_name: str, html_name: str):
+    graph_dict = read_graph_from_json(graph_name)
+    nt = Network(directed=graph_dict["directed"],
+                 bgcolor='#222222',
+                 font_color='white',
+                 notebook=True)
+    nt.add_nodes(graph_dict["nodes"])
+    nt.add_edges(graph_dict["edges"])
+    nt.show(html_name)
+    return nt
 
 
 if __name__ == "__main__":
