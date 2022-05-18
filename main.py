@@ -119,16 +119,26 @@ def add_edge(graph_name: str, source: str, to: str):
     add_data_to_json(path_to_file, graph)
 
 
+def get_html_path(html_name: str):
+    path_to_file = os.path.join("", "htmls", html_name)
+    return path_to_file
+
+
 @app.command()
-def show(graph_name: str, html_name: str):
+def show(graph_name: str,
+         html_name: str,
+         reload: bool = typer.Argument(True,
+                                       help='True (default) for reloading existing page,'
+                                       'False for opening new tab')):
     graph_dict = read_graph_from_json(graph_name)
     nt = Network(directed=graph_dict["directed"],
                  bgcolor='#222222',
                  font_color='white',
-                 notebook=True)
+                 notebook=reload)
     nt.add_nodes(graph_dict["nodes"])
     nt.add_edges(graph_dict["edges"])
-    nt.show(html_name)
+    html_file = get_html_path(html_name)
+    nt.show(html_file)
     return nt
 
 
