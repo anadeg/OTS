@@ -5,6 +5,7 @@ from typing import Optional
 
 import typer
 import networkx as nx
+from networkx.algorithms import tournament
 
 from pyvis.network import Network
 
@@ -75,6 +76,23 @@ def create_undirected(graph_name: str):
         add_data_to_json(path_to_file, upload_data)
 
 
+def return_json_graph(graph_name: str):
+    g = read_graph_from_json(graph_name)
+
+    nodes = g['nodes']
+    edges = g['edges']
+
+    if g['directed']:
+        nx_g = nx.DiGraph()
+    else:
+        nx_g = nx.Graph()
+
+    nx_g.add_nodes_from(nodes)
+    nx_g.add_edges_from(edges)
+
+    return g['name'], nx_g
+
+
 @app.command()
 def add_graph(graph_name: str, directed_graph: Optional[bool] =
                   typer.Option(
@@ -132,57 +150,39 @@ def update_graph(name: str, directed: bool, nodes, edges):
 
 @app.command()
 def delete_node(graph_name: str, node: str):
-    old_graph = read_graph_from_json(graph_name)
-
-    name, is_directed, nodes, edges = list(old_graph.values())
-    nx_g = nx.Graph()
-    nx_g.add_nodes_from(nodes)
-    nx_g.add_edges_from(edges)
+    name, nx_g = return_json_graph(graph_name)
 
     nx_g.remove_node(node)
 
-    new_graph = update_graph(name, is_directed, nx_g.nodes, nx_g.edges)
+    new_graph = update_graph(name, isinstance(nx_g, nx.DiGraph), nx_g.nodes, nx_g.edges)
     path_to_file = get_path_to_file(graph_name)
     add_data_to_json(path_to_file, new_graph)
 
 
 @app.command()
 def delete_edge(graph_name: str, source: str, to: str):
-    old_graph = read_graph_from_json(graph_name)
-
-    name, is_directed, nodes, edges = list(old_graph.values())
-    nx_g = nx.Graph()
-    nx_g.add_nodes_from(nodes)
-    nx_g.add_edges_from(edges)
+    name, nx_g = return_json_graph(graph_name)
 
     nx_g.remove_edge(source, to)
 
-    new_graph = update_graph(name, is_directed, nx_g.nodes, nx_g.edges)
+    new_graph = update_graph(name, isinstance(nx_g, nx.DiGraph), nx_g.nodes, nx_g.edges)
     path_to_file = get_path_to_file(graph_name)
     add_data_to_json(path_to_file, new_graph)
 
 
-# color of edges and nodes
-# amount of vertexes and edges
-# vertex degree (one or all)
-# is euler
 # to (binary) tree
 # hamilton cycle
-# diameter, radu=ius, center
+# diameter, radius, center
 # ...
 
 @app.command()
 def relabel_node(graph_name: str, old_name: str, new_name: str):
-    g = read_graph_from_json(graph_name)
-
-    nx_g = nx.Graph()
-    nx_g.add_nodes_from(g['nodes'])
-    nx_g.add_edges_from(g['edges'])
+    name, nx_g = return_json_graph(graph_name)
 
     mapping = {old_name: new_name}
     nx_g = nx.relabel_nodes(nx_g, mapping)
 
-    new_graph = update_graph(g['name'], g['directed'], nx_g.nodes, nx_g.edges)
+    new_graph = update_graph(name, isinstance(nx_g, nx.DiGraph), nx_g.nodes, nx_g.edges)
     path_to_file = get_path_to_file(graph_name)
     add_data_to_json(path_to_file, new_graph)
 
@@ -201,19 +201,7 @@ def edges_amount(graph_name: str):
 
 @app.command()
 def node_degree(graph_name: str, node: str):
-    g = read_graph_from_json(graph_name)
-    typer.echo(g['directed'])
-
-    nodes = g['nodes']
-    edges = g['edges']
-
-    if g['directed']:
-        nx_g = nx.DiGraph()
-    else:
-        nx_g = nx.Graph()
-
-    nx_g.add_nodes_from(nodes)
-    nx_g.add_edges_from(edges)
+    name, nx_g = return_json_graph(graph_name)
 
     try:
         typer.echo(f"Node {node} has degree {nx_g.degree[node]}")
@@ -223,25 +211,58 @@ def node_degree(graph_name: str, node: str):
 
 @app.command()
 def graph_degree(graph_name: str):
-    g = read_graph_from_json(graph_name)
-
-    nodes = g['nodes']
-    edges = g['edges']
-
-    if g['directed']:
-        nx_g = nx.DiGraph()
-    else:
-        nx_g = nx.Graph()
-
-    nx_g.add_nodes_from(nodes)
-    nx_g.add_edges_from(edges)
+    name, nx_g = return_json_graph(graph_name)
 
     graph_degree = 0
     degrees = nx_g.degree
     for node, degree in degrees:
         graph_degree += degree
 
-    typer.echo(f"Graph {g['name']} has degree {graph_degree}")
+    typer.echo(f"Graph {name} has degree {graph_degree}")
+
+
+@app.command()
+def is_eulerian(graph_name: str):
+    name, nx_g = return_json_graph(graph_name)
+    answer = "Yes" if nx.is_eulerian(nx_g) else "No"
+    typer.echo(f"Is graph {name} eulerian? --- {answer}")
+
+
+# @app.command()
+# def hamiltonian_path(graph_name: str):
+#     name, nx_g = return_json_graph(graph_name)
+#     path = tournament.hamiltonian_path(nx_g)
+#     typer.echo(path)
+
+@app.command()
+def diameter(graph_name: str):
+    name, nx_g = return_json_graph(graph_name)
+    try:
+        d = nx.diameter(nx_g)
+        typer.echo(f"Graph {name} has diameter {d}")
+    except nx.exception.NetworkXError:
+        typer.echo("Can not find graph diameter")
+
+
+@app.command()
+def radius(graph_name: str):
+    name, nx_g = return_json_graph(graph_name)
+    try:
+        r = nx.radius(nx_g)
+        typer.echo(f"Graph {name} has radius {r}")
+    except nx.exception.NetworkXError:
+        typer.echo("Can not find graph radius")
+
+
+@app.command()
+def center(graph_name: str):
+    name, nx_g = return_json_graph(graph_name)
+    try:
+        c = nx.center(nx_g)
+        for current_center in c:
+            typer.echo(f"Graph {name} has center {current_center}")
+    except nx.exception.NetworkXError:
+        typer.echo("Can not find graph center")
 
 
 def get_html_path(html_name: str):
@@ -252,6 +273,8 @@ def get_html_path(html_name: str):
 @app.command()
 def show(graph_name: str,
          html_name: str,
+         nodes_color: str = 'cyan',
+         edges_color: str = 'blue',
          stay_this_tab: Optional[bool] = typer.Option(False,
                                        "-f",
                                        "--false",
@@ -261,8 +284,12 @@ def show(graph_name: str,
                  bgcolor='#222222',
                  font_color='white',
                  notebook=not stay_this_tab)
-    nt.add_nodes(graph_dict["nodes"])
-    nt.add_edges(graph_dict["edges"])
+    for node in graph_dict["nodes"]:
+        nt.add_node(node, color=nodes_color)
+    # nt.add_nodes(graph_dict["nodes"], color=nodes_color)
+    for edge in graph_dict["edges"]:
+        nt.add_edge(edge[0], edge[1], color=edges_color)
+    # nt.add_edges(graph_dict["edges"], color=edges_color)
     html_file = get_html_path(html_name)
     nt.show(html_file)
     return nt
