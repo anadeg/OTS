@@ -187,8 +187,61 @@ def relabel_node(graph_name: str, old_name: str, new_name: str):
     add_data_to_json(path_to_file, new_graph)
 
 
-def change_node_color(graph_name: str, node: str, color: str):
-    pass
+@app.command()
+def nodes_amount(graph_name: str):
+    g = read_graph_from_json(graph_name)
+    typer.echo(f"Graph {g['name']} has {len(g['nodes'])} nodes")
+
+
+@app.command()
+def edges_amount(graph_name: str):
+    g = read_graph_from_json(graph_name)
+    typer.echo(f"Graph {g['name']} has {len(g['edges'])} edges")
+
+
+@app.command()
+def node_degree(graph_name: str, node: str):
+    g = read_graph_from_json(graph_name)
+    typer.echo(g['directed'])
+
+    nodes = g['nodes']
+    edges = g['edges']
+
+    if g['directed']:
+        nx_g = nx.DiGraph()
+    else:
+        nx_g = nx.Graph()
+
+    nx_g.add_nodes_from(nodes)
+    nx_g.add_edges_from(edges)
+
+    try:
+        typer.echo(f"Node {node} has degree {nx_g.degree[node]}")
+    except KeyError:
+        typer.echo(f"There is no node {node}")
+
+
+@app.command()
+def graph_degree(graph_name: str):
+    g = read_graph_from_json(graph_name)
+
+    nodes = g['nodes']
+    edges = g['edges']
+
+    if g['directed']:
+        nx_g = nx.DiGraph()
+    else:
+        nx_g = nx.Graph()
+
+    nx_g.add_nodes_from(nodes)
+    nx_g.add_edges_from(edges)
+
+    graph_degree = 0
+    degrees = nx_g.degree
+    for node, degree in degrees:
+        graph_degree += degree
+
+    typer.echo(f"Graph {g['name']} has degree {graph_degree}")
 
 
 def get_html_path(html_name: str):
