@@ -46,7 +46,7 @@ def create_file(graph_name: str):
 
 def add_data_to_json(path_to_file, data):
     with open(path_to_file, 'w') as file:
-        json.dump(data, file)
+        json.dump(data, file, indent=4)
 
 
 def create_directed(graph_name: str):
@@ -144,6 +144,51 @@ def delete_node(graph_name: str, node: str):
     new_graph = update_graph(name, is_directed, nx_g.nodes, nx_g.edges)
     path_to_file = get_path_to_file(graph_name)
     add_data_to_json(path_to_file, new_graph)
+
+
+@app.command()
+def delete_edge(graph_name: str, source: str, to: str):
+    old_graph = read_graph_from_json(graph_name)
+
+    name, is_directed, nodes, edges = list(old_graph.values())
+    nx_g = nx.Graph()
+    nx_g.add_nodes_from(nodes)
+    nx_g.add_edges_from(edges)
+
+    nx_g.remove_edge(source, to)
+
+    new_graph = update_graph(name, is_directed, nx_g.nodes, nx_g.edges)
+    path_to_file = get_path_to_file(graph_name)
+    add_data_to_json(path_to_file, new_graph)
+
+
+# color of edges and nodes
+# amount of vertexes and edges
+# vertex degree (one or all)
+# is euler
+# to (binary) tree
+# hamilton cycle
+# diameter, radu=ius, center
+# ...
+
+@app.command()
+def relabel_node(graph_name: str, old_name: str, new_name: str):
+    g = read_graph_from_json(graph_name)
+
+    nx_g = nx.Graph()
+    nx_g.add_nodes_from(g['nodes'])
+    nx_g.add_edges_from(g['edges'])
+
+    mapping = {old_name: new_name}
+    nx_g = nx.relabel_nodes(nx_g, mapping)
+
+    new_graph = update_graph(g['name'], g['directed'], nx_g.nodes, nx_g.edges)
+    path_to_file = get_path_to_file(graph_name)
+    add_data_to_json(path_to_file, new_graph)
+
+
+def change_node_color(graph_name: str, node: str, color: str):
+    pass
 
 
 def get_html_path(html_name: str):
