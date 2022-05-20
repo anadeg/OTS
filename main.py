@@ -228,14 +228,16 @@ def is_eulerian(graph_name: str):
 
 @app.command()
 def hamiltonian_path(graph_name: str):
-    name, nx_g = return_json_graph(graph_name)
-    # is_directed = nx_g['nodes']
-    # tsp = nx.approximation.traveling_salesman_problem
-    result = nx.dfs_tree(nx_g)
-    # typer.echo(result.nodes)
-    # typer.echo(result.edges)
-
-    # typer.echo(nx_g)
+    # name, nx_g = return_json_graph(graph_name)
+    # result = nx.dfs_tree(nx_g)
+    #
+    # graph_path_name = "-".join([graph_name, "tree"])
+    #
+    # path_to_file, is_created = create_file(graph_path_name)
+    #
+    # data = update_graph(graph_path_name, isinstance(nx_g, nx.DiGraph), result.nodes, result.edges)
+    # add_data_to_json(path_to_file, data)
+    pass
 
     graph_path_name = "-".join([graph_name, "tree"])
 
