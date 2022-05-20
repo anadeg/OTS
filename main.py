@@ -6,6 +6,7 @@ from typing import Optional
 import typer
 import networkx as nx
 from networkx.algorithms import tournament
+from networkx.algorithms.approximation import asadpour_atsp
 
 from pyvis.network import Network
 
@@ -33,7 +34,7 @@ def get_path_to_file(graph_name: str):
     return path_to_file
 
 
-@app.command()
+# @app.command()
 def create_file(graph_name: str):
     path_to_file = get_path_to_file(graph_name)
     graphs = graph_files(path_to_file)
@@ -64,7 +65,6 @@ def create_directed(graph_name: str):
 
 
 def create_undirected(graph_name: str):
-    # g = UndirectedGraph(graph_name)
     upload_data = {
         "name": graph_name,
         "directed": False,
@@ -172,8 +172,6 @@ def delete_edge(graph_name: str, source: str, to: str):
 
 # to (binary) tree
 # hamilton cycle
-# diameter, radius, center
-# ...
 
 @app.command()
 def relabel_node(graph_name: str, old_name: str, new_name: str):
@@ -228,11 +226,24 @@ def is_eulerian(graph_name: str):
     typer.echo(f"Is graph {name} eulerian? --- {answer}")
 
 
-# @app.command()
-# def hamiltonian_path(graph_name: str):
-#     name, nx_g = return_json_graph(graph_name)
-#     path = tournament.hamiltonian_path(nx_g)
-#     typer.echo(path)
+@app.command()
+def hamiltonian_path(graph_name: str):
+    name, nx_g = return_json_graph(graph_name)
+    # is_directed = nx_g['nodes']
+    # tsp = nx.approximation.traveling_salesman_problem
+    result = nx.dfs_tree(nx_g)
+    # typer.echo(result.nodes)
+    # typer.echo(result.edges)
+
+    # typer.echo(nx_g)
+
+    graph_path_name = "-".join([graph_name, "tree"])
+
+    path_to_file, is_created = create_file(graph_path_name)
+
+    data = update_graph(graph_path_name, isinstance(nx_g, nx.DiGraph), result.nodes, result.edges)
+    add_data_to_json(path_to_file, data)
+
 
 @app.command()
 def diameter(graph_name: str):
@@ -265,6 +276,51 @@ def center(graph_name: str):
         typer.echo("Can not find graph center")
 
 
+def make_nodes_names(nodes_list):
+    nodes = []
+    for node_pair in nodes_list:
+        node_name = ",".join([node_pair[0], node_pair[1]])
+        nodes.append(node_name)
+    return nodes
+
+
+def make_edges_names(edges_list):
+    edges = []
+    for edge_list in edges_list:
+        source = ",".join([edge_list[0][0], edge_list[0][1]])
+        to = ",".join([edge_list[1][0], edge_list[1][1]])
+        edges.append([source, to])
+    return edges
+
+
+@app.command()
+def cartesian_product(graph1: str, graph2: str, product_name: str):
+    name1, nx_g1 = return_json_graph(graph1)
+    name2, nx_g2 = return_json_graph(graph2)
+    g1_g2 = nx.cartesian_product(nx_g1, nx_g2)
+
+    path_to_file, is_creates = create_file(product_name)
+    nodes = make_nodes_names(g1_g2.nodes)
+    edges = make_edges_names(g1_g2.edges)
+
+    data = update_graph(product_name, isinstance(g1_g2, nx.DiGraph), nodes, edges)
+    add_data_to_json(path_to_file, data)
+
+
+@app.command()
+def tensor_product(graph1: str, graph2: str, product_name: str):
+    name1, nx_g1 = return_json_graph(graph1)
+    name2, nx_g2 = return_json_graph(graph2)
+    g1_g2 = nx.tensor_product(nx_g1, nx_g2)
+
+    path_to_file, is_creates = create_file(product_name)
+    nodes = make_nodes_names(g1_g2.nodes)
+    edges = make_edges_names(g1_g2.edges)
+
+    data = update_graph(product_name, isinstance(g1_g2, nx.DiGraph), nodes, edges)
+    add_data_to_json(path_to_file, data)
+
+
 def get_html_path(html_name: str):
     path_to_file = os.path.join("", "htmls", html_name)
     return path_to_file
@@ -276,20 +332,20 @@ def show(graph_name: str,
          nodes_color: str = 'cyan',
          edges_color: str = 'blue',
          stay_this_tab: Optional[bool] = typer.Option(False,
-                                       "-f",
-                                       "--false",
-                                       help='Stay on current tab - default (or open new)')):
+                                       "-o",
+                                       "--open-new-tab",
+                                       help='Open new tab')):
     graph_dict = read_graph_from_json(graph_name)
-    nt = Network(directed=graph_dict["directed"],
+    nt = Network(height='550xp',
+                 width='550xp',
+                 directed=graph_dict["directed"],
                  bgcolor='#222222',
                  font_color='white',
                  notebook=not stay_this_tab)
     for node in graph_dict["nodes"]:
         nt.add_node(node, color=nodes_color)
-    # nt.add_nodes(graph_dict["nodes"], color=nodes_color)
     for edge in graph_dict["edges"]:
         nt.add_edge(edge[0], edge[1], color=edges_color)
-    # nt.add_edges(graph_dict["edges"], color=edges_color)
     html_file = get_html_path(html_name)
     nt.show(html_file)
     return nt
