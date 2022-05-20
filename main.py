@@ -239,10 +239,15 @@ def hamiltonian_path(graph_name: str):
 
     graph_path_name = "-".join([graph_name, "tree"])
 
-    path_to_file, is_created = create_file(graph_path_name)
-
-    data = update_graph(graph_path_name, isinstance(nx_g, nx.DiGraph), result.nodes, result.edges)
-    add_data_to_json(path_to_file, data)
+@app.command()
+def get_adjacency_matrix(graph_name: str):
+    graph_dict = read_graph_from_json(graph_name)
+    size = len(graph_dict['nodes'])
+    matrix = [[0 for _ in range(size)] for _ in range(size)]
+    for i, source in enumerate(graph_dict['nodes']):
+        for j, to in enumerate(graph_dict['nodes']):
+            if [source, to] in graph_dict['edges']:
+                matrix[i][j] = 1
 
 
 @app.command()
