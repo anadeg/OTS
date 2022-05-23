@@ -2,7 +2,7 @@ import math
 import os
 import json
 
-from typing import Optional
+from typing import Optional, List, Tuple
 
 import typer
 import networkx as nx
@@ -230,11 +230,15 @@ def is_eulerian(graph_name: str):
 def hamiltonian_cycle(graph_name: str):
     name, nx_g = return_json_graph(graph_name)
     graph = adjacency_list(nx_g.nodes, nx_g.edges)
+    paths = []
     for node in nx_g.nodes:
         path = hamilton(graph, node)
         if path:
             if nx_g.has_edge(path[0], path[-1]):
                 typer.echo(path)
+                paths.append(path)
+    if not paths:
+        typer.echo(f'Graph {name} has no hamiltonian cycle')
 
 
 def hamilton(graph, start):
@@ -335,24 +339,15 @@ def tensor_product(graph1: str, graph2: str, product_name: str):
 def tree(graph_name: str):
     name, nx_g = return_json_graph(graph_name)
     adj_list = adjacency_list(nx_g.nodes, nx_g.edges)
-    # try:
-    #     tree_name = "-".join([graph_name, "tree"])
-    #     tree = nx.minimum_spanning_tree(nx_g)
-    #
-    #     new_graph = update_graph(tree_name, isinstance(tree, nx.DiGraph), tree.nodes, tree.edges)
-    #     path_to_file = get_path_to_file(tree_name)
-    #     add_data_to_json(path_to_file, new_graph)
-    # except nx.exception.NetworkXNotImplemented:
-    #     typer.echo(f"Algorithm does not implemented for directed graphs")
     result = {node: set() for node in adj_list.keys()}
     visited = set()
 
-    tree_name = "-".join([graph_name, "binary"])
+    tree_name = "-".join([graph_name, "tree"])
     bin_tree = make_tree(adj_list, list(result.items())[0][0], visited, result)
 
     nodes, edges = nodes_and_values(bin_tree)
 
-    new_graph = update_graph(tree_name, isinstance(tree, nx.DiGraph), nodes, edges)
+    new_graph = update_graph(tree_name, isinstance(nx_g, nx.DiGraph), nodes, edges)
     path_to_file = get_path_to_file(tree_name)
     add_data_to_json(path_to_file, new_graph)
 
@@ -420,6 +415,120 @@ def make_tree(adj_list, source, visited, result, binary=math.inf):
 def get_html_path(html_name: str):
     path_to_file = os.path.join("", "htmls", html_name)
     return path_to_file
+
+
+@app.command()
+def subgraph(graph_name, nodes: List[str]):
+    name, nx_g = return_json_graph(graph_name)
+    sub = nx_g.subgraph(nodes)
+
+    sub_name = "-".join([name, "sub"])
+
+    new_graph = update_graph(sub_name, isinstance(nx_g, nx.DiGraph), sub.nodes, sub.edges)
+    path_to_file = get_path_to_file(sub_name)
+    add_data_to_json(path_to_file, new_graph)
+
+
+@app.command()
+def show_subgraph(graph: str,
+                  subgraph: str,
+                  html_name: str,
+                  subgraph_color: str = 'red',
+                  nodes_color: str = 'cyan',
+                  edges_color: str = 'blue',
+                  stay_this_tab: Optional[bool] = typer.Option(False,
+                                                               "-o",
+                                                               "--open-new-tab",
+                                                               help='Open new tab')
+                  ):
+    graph_dict = read_graph_from_json(graph)
+    subgraph_dict = read_graph_from_json(subgraph)
+    nt = Network(height='550xp',
+                 width='550xp',
+                 directed=graph_dict["directed"],
+                 bgcolor='#222222',
+                 font_color='white',
+                 notebook=not stay_this_tab)
+    for node in graph_dict['nodes']:
+        if node in subgraph_dict['nodes']:
+            nt.add_node(node, color=subgraph_color)
+        else:
+            nt.add_node(node, color=nodes_color)
+    for edge in graph_dict['edges']:
+        if edge in subgraph_dict['edges']:
+            nt.add_edge(edge[0], edge[1], color=subgraph_color)
+        else:
+            nt.add_edge(edge[0], edge[1], color=edges_color)
+    html_file = get_html_path(html_name)
+    # nt.toggle_physics(status=False)
+    nt.show(html_file)
+    return nt
+
+
+@app.command()
+def change_nodes_color(graph: str,
+                  html_name: str,
+                  colored_nodes: List[str],
+                  node_color: str = 'red',
+                  nodes_color: str = 'cyan',
+                  edges_color: str = 'blue',
+                  stay_this_tab: Optional[bool] = typer.Option(False,
+                                                               "-o",
+                                                               "--open-new-tab",
+                                                               help='Open new tab')
+                  ):
+    graph_dict = read_graph_from_json(graph)
+    nt = Network(height='550xp',
+                 width='550xp',
+                 directed=graph_dict["directed"],
+                 bgcolor='#222222',
+                 font_color='white',
+                 notebook=not stay_this_tab)
+    for node in graph_dict['nodes']:
+        if node in colored_nodes:
+            nt.add_node(node, color=node_color)
+        else:
+            nt.add_node(node, color=nodes_color)
+    for edge in graph_dict['edges']:
+        nt.add_edge(edge[0], edge[1], color=edges_color)
+    html_file = get_html_path(html_name)
+    # nt.toggle_physics(status=False)
+    nt.show(html_file)
+    return nt
+
+
+@app.command()
+def change_edges_color(graph: str,
+                  html_name: str,
+                  colored_edges: List[str],
+                  edge_color: str = 'red',
+                  nodes_color: str = 'cyan',
+                  edges_color: str = 'blue',
+                  stay_this_tab: Optional[bool] = typer.Option(False,
+                                                               "-o",
+                                                               "--open-new-tab",
+                                                               help='Open new tab')
+                  ):
+    source = [colored_edges[i] for i in range(len(colored_edges)) if i % 2 == 0]
+    to = [colored_edges[i] for i in range(len(colored_edges)) if i % 2 == 1]
+    graph_dict = read_graph_from_json(graph)
+    nt = Network(height='550xp',
+                 width='550xp',
+                 directed=graph_dict["directed"],
+                 bgcolor='#222222',
+                 font_color='white',
+                 notebook=not stay_this_tab)
+    for node in graph_dict['nodes']:
+        nt.add_node(node, color=nodes_color)
+    for edge in graph_dict['edges']:
+        if (edge[0], edge[1]) in zip(source, to):
+            nt.add_edge(edge[0], edge[1], color=edge_color)
+        else:
+            nt.add_edge(edge[0], edge[1], color=edges_color)
+    html_file = get_html_path(html_name)
+    # nt.toggle_physics(status=False)
+    nt.show(html_file)
+    return nt
 
 
 @app.command()
