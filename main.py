@@ -1,3 +1,4 @@
+import math
 import os
 import json
 
@@ -152,23 +153,28 @@ def update_graph(name: str, directed: bool, nodes, edges):
 def delete_node(graph_name: str, node: str):
     name, nx_g = return_json_graph(graph_name)
 
-    nx_g.remove_node(node)
+    try:
+        nx_g.remove_node(node)
 
-    new_graph = update_graph(name, isinstance(nx_g, nx.DiGraph), nx_g.nodes, nx_g.edges)
-    path_to_file = get_path_to_file(graph_name)
-    add_data_to_json(path_to_file, new_graph)
+        new_graph = update_graph(name, isinstance(nx_g, nx.DiGraph), nx_g.nodes, nx_g.edges)
+        path_to_file = get_path_to_file(graph_name)
+        add_data_to_json(path_to_file, new_graph)
+    except nx.exception.NetworkXError:
+        typer.echo(f"Graph {name} does not contain node {node}")
 
 
 @app.command()
 def delete_edge(graph_name: str, source: str, to: str):
     name, nx_g = return_json_graph(graph_name)
 
-    nx_g.remove_edge(source, to)
+    try:
+        nx_g.remove_edge(source, to)
 
-    new_graph = update_graph(name, isinstance(nx_g, nx.DiGraph), nx_g.nodes, nx_g.edges)
-    path_to_file = get_path_to_file(graph_name)
-    add_data_to_json(path_to_file, new_graph)
-
+        new_graph = update_graph(name, isinstance(nx_g, nx.DiGraph), nx_g.nodes, nx_g.edges)
+        path_to_file = get_path_to_file(graph_name)
+        add_data_to_json(path_to_file, new_graph)
+    except nx.exception.NetworkXError:
+        typer.echo(f"Graph {name} does not contain edge ({source}, {to})")
 
 # to (binary) tree
 # hamilton cycle
@@ -328,6 +334,92 @@ def tensor_product(graph1: str, graph2: str, product_name: str):
     add_data_to_json(path_to_file, data)
 
 
+@app.command()
+def tree(graph_name: str):
+    name, nx_g = return_json_graph(graph_name)
+    adj_list = adjacency_list(nx_g.nodes, nx_g.edges)
+    # try:
+    #     tree_name = "-".join([graph_name, "tree"])
+    #     tree = nx.minimum_spanning_tree(nx_g)
+    #
+    #     new_graph = update_graph(tree_name, isinstance(tree, nx.DiGraph), tree.nodes, tree.edges)
+    #     path_to_file = get_path_to_file(tree_name)
+    #     add_data_to_json(path_to_file, new_graph)
+    # except nx.exception.NetworkXNotImplemented:
+    #     typer.echo(f"Algorithm does not implemented for directed graphs")
+    result = {node: set() for node in adj_list.keys()}
+    visited = set()
+
+    tree_name = "-".join([graph_name, "binary"])
+    bin_tree = make_tree(adj_list, list(result.items())[0][0], visited, result)
+
+    nodes, edges = nodes_and_values(bin_tree)
+
+    new_graph = update_graph(tree_name, isinstance(tree, nx.DiGraph), nodes, edges)
+    path_to_file = get_path_to_file(tree_name)
+    add_data_to_json(path_to_file, new_graph)
+
+
+def adjacency_list(nodes, edges):
+    edges = sorted(edges)
+    result = {node: set() for node in nodes}
+    frequency = []
+    for edge in edges:
+        frequency.extend(list(edge))
+
+    for edge in edges:
+        result[edge[0]].add(edge[1])
+        result[edge[1]].add(edge[0])
+
+    for key in result.keys():
+        result[key] = sorted(list(result[key]), key=frequency.count)
+
+    return result
+
+
+@app.command()
+def binary_tree(graph_name: str):
+    name, nx_g = return_json_graph(graph_name)
+    adj_list = adjacency_list(nx_g.nodes, nx_g.edges)
+
+    result = {node: set() for node in adj_list.keys()}
+    visited = set()
+
+    tree_name = "-".join([graph_name, "binary"])
+    bin_tree = make_tree(adj_list, list(result.items())[0][0], visited, result, binary=2)
+
+    nodes, edges = nodes_and_values(bin_tree)
+    new_graph = update_graph(tree_name, isinstance(nx_g, nx.DiGraph), nodes, edges)
+    path_to_file = get_path_to_file(tree_name)
+    add_data_to_json(path_to_file, new_graph)
+
+
+def nodes_and_values(bin_tree):
+    nodes = []
+    edges = []
+
+    for key, values in bin_tree.items():
+        nodes.append(key)
+        for value in values:
+            edges.append([key, value])
+
+    return nodes, edges
+
+
+def make_tree(adj_list, source, visited, result, binary=math.inf):
+    for to in adj_list[source]:
+        if to not in visited:
+            if len(result[source]) < binary:
+                result[source].add(to)
+                visited.add(source)
+                visited.add(to)
+
+    for node in result[source]:
+        make_tree(adj_list, node, visited, result, binary=binary)
+
+    return result
+
+
 def get_html_path(html_name: str):
     path_to_file = os.path.join("", "htmls", html_name)
     return path_to_file
@@ -354,6 +446,7 @@ def show(graph_name: str,
     for edge in graph_dict["edges"]:
         nt.add_edge(edge[0], edge[1], color=edges_color)
     html_file = get_html_path(html_name)
+    nt.toggle_physics(status=False)
     nt.show(html_file)
     return nt
 
