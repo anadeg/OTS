@@ -6,13 +6,8 @@ from typing import Optional
 
 import typer
 import networkx as nx
-from networkx.algorithms import tournament
-from networkx.algorithms.approximation import asadpour_atsp
 
 from pyvis.network import Network
-
-from directed_graph_class import DirectedGraph
-from undirected_graph_class import UndirectedGraph
 
 
 app = typer.Typer()
@@ -176,7 +171,6 @@ def delete_edge(graph_name: str, source: str, to: str):
     except nx.exception.NetworkXError:
         typer.echo(f"Graph {name} does not contain edge ({source}, {to})")
 
-# to (binary) tree
 # hamilton cycle
 
 @app.command()
@@ -233,29 +227,32 @@ def is_eulerian(graph_name: str):
 
 
 @app.command()
-def hamiltonian_path(graph_name: str):
-    # name, nx_g = return_json_graph(graph_name)
-    # result = nx.dfs_tree(nx_g)
-    #
-    # graph_path_name = "-".join([graph_name, "tree"])
-    #
-    # path_to_file, is_created = create_file(graph_path_name)
-    #
-    # data = update_graph(graph_path_name, isinstance(nx_g, nx.DiGraph), result.nodes, result.edges)
-    # add_data_to_json(path_to_file, data)
-    pass
+def hamiltonian_cycle(graph_name: str):
+    name, nx_g = return_json_graph(graph_name)
+    graph = adjacency_list(nx_g.nodes, nx_g.edges)
+    for node in nx_g.nodes:
+        path = hamilton(graph, node)
+        if path:
+            if nx_g.has_edge(path[0], path[-1]):
+                typer.echo(path)
 
-    graph_path_name = "-".join([graph_name, "tree"])
 
-@app.command()
-def get_adjacency_matrix(graph_name: str):
-    graph_dict = read_graph_from_json(graph_name)
-    size = len(graph_dict['nodes'])
-    matrix = [[0 for _ in range(size)] for _ in range(size)]
-    for i, source in enumerate(graph_dict['nodes']):
-        for j, to in enumerate(graph_dict['nodes']):
-            if [source, to] in graph_dict['edges']:
-                matrix[i][j] = 1
+def hamilton(graph, start):
+    size = len(graph)
+    to_visit = [None, start]
+    path = []
+    while to_visit:
+        v = to_visit.pop()
+        if v:
+            path.append(v)
+            if len(path) == size:
+                break
+            for x in set(graph[v]) - set(path):
+                to_visit.append(None)
+                to_visit.append(x)
+        else:
+            path.pop()
+    return path
 
 
 @app.command()
@@ -446,7 +443,7 @@ def show(graph_name: str,
     for edge in graph_dict["edges"]:
         nt.add_edge(edge[0], edge[1], color=edges_color)
     html_file = get_html_path(html_name)
-    nt.toggle_physics(status=False)
+    # nt.toggle_physics(status=False)
     nt.show(html_file)
     return nt
 
