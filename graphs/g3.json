@@ -1,1 +1,19 @@
-{"name": "g3", "directed": false, "nodes": [], "edges": []}
+{
+    "name": "g3",
+    "directed": true,
+    "nodes": [
+        "a",
+        "b",
+        "c"
+    ],
+    "edges": [
+        [
+            "c",
+            "b"
+        ],
+        [
+            "a",
+            "b"
+        ]
+    ]
+}
