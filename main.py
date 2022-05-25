@@ -2,7 +2,7 @@ import math
 import os
 import json
 
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
 import typer
 import networkx as nx
@@ -30,7 +30,6 @@ def get_path_to_file(graph_name: str):
     return path_to_file
 
 
-# @app.command()
 def create_file(graph_name: str):
     path_to_file = get_path_to_file(graph_name)
     graphs = graph_files(path_to_file)
@@ -48,7 +47,6 @@ def add_data_to_json(path_to_file, data):
 
 
 def create_directed(graph_name: str):
-    # g = DirectedGraph(graph_name)
     upload_data = {
         "name": graph_name,
         "directed": True,
@@ -108,7 +106,7 @@ def add_graph(graph_name: str, directed_graph: Optional[bool] =
     elif undirected_graph:
         create_undirected(graph_name)
     else:
-        typer.echo("error")
+        typer.echo("Error. Please choose the graph type")
 
 
 def read_graph_from_json(graph_name: str):
@@ -120,18 +118,24 @@ def read_graph_from_json(graph_name: str):
 
 @app.command()
 def add_node(graph_name: str, node: str):
-    graph = read_graph_from_json(graph_name)
-    graph["nodes"].append(node)
+    name, nx_g = return_json_graph(graph_name)
+
+    nx_g.add_node(node)
+
+    new_graph = update_graph(name, isinstance(nx_g, nx.DiGraph), nx_g.nodes, nx_g.edges)
     path_to_file = get_path_to_file(graph_name)
-    add_data_to_json(path_to_file, graph)
+    add_data_to_json(path_to_file, new_graph)
 
 
 @app.command()
 def add_edge(graph_name: str, source: str, to: str):
-    graph = read_graph_from_json(graph_name)
-    graph["edges"].append((source, to))
+    name, nx_g = return_json_graph(graph_name)
+
+    nx_g.add_edge(source, to)
+
+    new_graph = update_graph(name, isinstance(nx_g, nx.DiGraph), nx_g.nodes, nx_g.edges)
     path_to_file = get_path_to_file(graph_name)
-    add_data_to_json(path_to_file, graph)
+    add_data_to_json(path_to_file, new_graph)
 
 
 def update_graph(name: str, directed: bool, nodes, edges):
@@ -311,28 +315,34 @@ def make_edges_names(edges_list):
 def cartesian_product(graph1: str, graph2: str, product_name: str):
     name1, nx_g1 = return_json_graph(graph1)
     name2, nx_g2 = return_json_graph(graph2)
-    g1_g2 = nx.cartesian_product(nx_g1, nx_g2)
+    try:
+        g1_g2 = nx.cartesian_product(nx_g1, nx_g2)
 
-    path_to_file, is_creates = create_file(product_name)
-    nodes = make_nodes_names(g1_g2.nodes)
-    edges = make_edges_names(g1_g2.edges)
+        path_to_file, is_creates = create_file(product_name)
+        nodes = make_nodes_names(g1_g2.nodes)
+        edges = make_edges_names(g1_g2.edges)
 
-    data = update_graph(product_name, isinstance(g1_g2, nx.DiGraph), nodes, edges)
-    add_data_to_json(path_to_file, data)
+        data = update_graph(product_name, isinstance(g1_g2, nx.DiGraph), nodes, edges)
+        add_data_to_json(path_to_file, data)
+    except nx.exception.NetworkXError as e:
+        typer.echo(e.__str__())
 
 
 @app.command()
 def tensor_product(graph1: str, graph2: str, product_name: str):
     name1, nx_g1 = return_json_graph(graph1)
     name2, nx_g2 = return_json_graph(graph2)
-    g1_g2 = nx.tensor_product(nx_g1, nx_g2)
+    try:
+        g1_g2 = nx.tensor_product(nx_g1, nx_g2)
 
-    path_to_file, is_creates = create_file(product_name)
-    nodes = make_nodes_names(g1_g2.nodes)
-    edges = make_edges_names(g1_g2.edges)
+        path_to_file, is_creates = create_file(product_name)
+        nodes = make_nodes_names(g1_g2.nodes)
+        edges = make_edges_names(g1_g2.edges)
 
-    data = update_graph(product_name, isinstance(g1_g2, nx.DiGraph), nodes, edges)
-    add_data_to_json(path_to_file, data)
+        data = update_graph(product_name, isinstance(g1_g2, nx.DiGraph), nodes, edges)
+        add_data_to_json(path_to_file, data)
+    except nx.exception.NetworkXError as e:
+        typer.echo(e.__str__())
 
 
 @app.command()
@@ -435,7 +445,7 @@ def show_subgraph(graph: str,
                   html_name: str,
                   subgraph_color: str = 'red',
                   nodes_color: str = 'cyan',
-                  edges_color: str = 'blue',
+                  edges_color: str = 'lavender',
                   stay_this_tab: Optional[bool] = typer.Option(False,
                                                                "-o",
                                                                "--open-new-tab",
@@ -471,7 +481,7 @@ def change_nodes_color(graph: str,
                   colored_nodes: List[str],
                   node_color: str = 'red',
                   nodes_color: str = 'cyan',
-                  edges_color: str = 'blue',
+                  edges_color: str = 'lavender',
                   stay_this_tab: Optional[bool] = typer.Option(False,
                                                                "-o",
                                                                "--open-new-tab",
@@ -503,7 +513,7 @@ def change_edges_color(graph: str,
                   colored_edges: List[str],
                   edge_color: str = 'red',
                   nodes_color: str = 'cyan',
-                  edges_color: str = 'blue',
+                  edges_color: str = 'lavender',
                   stay_this_tab: Optional[bool] = typer.Option(False,
                                                                "-o",
                                                                "--open-new-tab",
@@ -523,6 +533,9 @@ def change_edges_color(graph: str,
     for edge in graph_dict['edges']:
         if (edge[0], edge[1]) in zip(source, to):
             nt.add_edge(edge[0], edge[1], color=edge_color)
+        elif not graph_dict['directed']:
+            if (edge[1], edge[0]) in zip(source, to):
+                nt.add_edge(edge[0], edge[1], color=edge_color)
         else:
             nt.add_edge(edge[0], edge[1], color=edges_color)
     html_file = get_html_path(html_name)
@@ -535,7 +548,7 @@ def change_edges_color(graph: str,
 def show(graph_name: str,
          html_name: str,
          nodes_color: str = 'cyan',
-         edges_color: str = 'blue',
+         edges_color: str = 'lavender',
          stay_this_tab: Optional[bool] = typer.Option(False,
                                        "-o",
                                        "--open-new-tab",
